@@ -1,7 +1,6 @@
 ---
-Author: Vinod Dalavai
+Author: Vinod Dalavai, Samson Zhang, Ramparsad Kokkula
 Date: 20th April 2023
-Email: vd1605@rit.edu
 ---
 # CSCI-620: Project Phase 3
 
