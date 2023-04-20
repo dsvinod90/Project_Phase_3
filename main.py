@@ -36,7 +36,6 @@ class Main:
             elif option in ('-D', '--dbname'):
                 self.dbname = arg
             elif option in ('-S', '--support'):
-                print("Here: " + arg)
                 self.min_support = int(arg)
             else:
                 sys.exit(1)
@@ -145,20 +144,21 @@ class Main:
                 f"GROUP BY {self._generate_group_by_clause(iterations)} " 
                 f"HAVING COUNT(1) >= {self.min_support}")
         
-    def _execute_itemset_mining(self) -> None:
-        """Public method that is called to execute the program.
-        Create all itemset tables until the one with 0 rows is encountered.
-        Delete the table with 0 rows
-        Fetch the names of the actors as part of the final itemset table
+    def _build_l1(self) -> None:
+        self.cursor.execute("DROP TABLE IF EXISTS L1")
+        return (f"SELECT artist_id as artist_1, count(1) INTO L1 "
+        f"FROM album_artist GROUP BY artist_id "
+        f"HAVING count(1) >= {self.min_support}; ")
+
+    def _create_lattices(self) -> int:
+        """Creates lattices iteratively until the last table is created with 0 rows
+        Returns:
+            int: the last value of iteration that produced records
         """
-        print("Commencing Itemset Mining ...\n")
-        self.timer.start()
         iterations = 1
-        self.cursor.execute(open("sql_scripts/create_l1.sql", "r").read())
-        last_iteration = None
-        # temp_count = 1
         while True:
-            iterations += 1 
+            iterations += 1
+            self.cursor.execute(f"DROP TABLE IF EXISTS L{iterations}")
             query = self._build_query(iterations)
             self.cursor.execute(query)
             self.cursor.execute(f"SELECT COUNT(1) FROM L{iterations}")
@@ -173,6 +173,19 @@ class Main:
                 break
             last_iteration = iterations
             print(f"Created table: L{iterations}; Number of rows = {result.count}") 
+        return last_iteration
+    
+    def _execute_itemset_mining(self) -> None:
+        """Public method that is called to execute the program.
+        Create all itemset tables until the one with 0 rows is encountered.
+        Delete the table with 0 rows
+        Fetch the names of the actors as part of the final itemset table
+        """
+        print("Commencing Itemset Mining ...\n")
+        self.timer.start()
+        # iterations = 1
+        self.cursor.execute(self._build_l1())
+        last_iteration = self._create_lattices()
         print(f"Last created table with records = L{last_iteration}")
         self._execute_final_query(last_iteration)
         print("Itemset Mining complete ...")
